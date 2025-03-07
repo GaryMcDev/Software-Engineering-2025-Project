@@ -52,14 +52,15 @@ def read_temperature_data(filename):
 
     return time, internal_temp, external_temp
 
-filename = "data1.dat" 
+filename = "../api_test/data/data1.dat" 
 time, internal_temp, external_temp = read_temperature_data(filename)
 
-plt.plot(time/3600, internal_temp)
-plt.plot(time/3600, external_temp)
+plt.plot(time/3600, internal_temp, color='r')
+plt.plot(time/3600, external_temp, color='blue')
 plt.ylabel("Temperature [C]")
 plt.xlabel("Time [s]")
 plt.title("Internal and External Temperature")
-plt.hlines(65, 0, 10)
-plt.hlines(71, 0, 10)
+plt.grid()
+#plt.hlines(65, 0, 10)
+#plt.hlines(71, 0, 10)
 plt.show()
