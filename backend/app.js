@@ -77,7 +77,7 @@ async function startDeviceDataLogging(token) {
       const logData = `${elapsedTime}, ${internalTemp}, ${externalTemp}\n`;
       writeToFile(newFile, logData);
     }
-  }, 60000); // Log every 60 seconds
+  }, 10000); // Log every 60 seconds
 }
 
 // Function to get device ID
