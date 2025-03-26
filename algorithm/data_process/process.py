@@ -51,16 +51,28 @@ def read_temperature_data(filename):
     external_temp = clean_data[:, 2]
 
     return time, internal_temp, external_temp
+def make_plot(time, internal, external): #
+    # Plot the corrected data
+    plt.plot(time/3600, internal, color='r')
+    plt.plot(time/3600, external, color='blue')
+    plt.ylabel("Temperature [C]")
+    plt.xlabel("Time [s]")
+    plt.title("Internal and External Temperature")
+    plt.grid()
+    #plt.hlines(65, 0, 10)
+    #plt.hlines(71, 0, 10)
+    plt.show()
 
+def dTdt(): # return the derivative at a point in time
+    if (T_in < 71.111):
+        return h*c / (m*A) * (T_ext - T_in)
+    else
+        return 0.1
+
+
+
+# Actually read the data and process it, store in some arrays
 filename = "../api_test/data/data1.dat" 
 time, internal_temp, external_temp = read_temperature_data(filename)
 
-plt.plot(time/3600, internal_temp, color='r')
-plt.plot(time/3600, external_temp, color='blue')
-plt.ylabel("Temperature [C]")
-plt.xlabel("Time [s]")
-plt.title("Internal and External Temperature")
-plt.grid()
-#plt.hlines(65, 0, 10)
-#plt.hlines(71, 0, 10)
-plt.show()
+
