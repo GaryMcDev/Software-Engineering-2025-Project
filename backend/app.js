@@ -14,7 +14,10 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
     document.getElementById("statusMessage").textContent = "Login successful!";
     document.getElementById("statusMessage").classList.remove("status-error");
     document.getElementById("statusMessage").classList.add("status-success");
-    startDeviceDataLogging(token);
+
+    // Store the token in sessionStorage
+    sessionStorage.setItem('authToken', token);
+    window.location.href = "data-page.html"; // Redirect to the data page
   } else {
     document.getElementById("statusMessage").textContent = "Login failed. Please try again.";
     document.getElementById("statusMessage").classList.remove("status-success");
@@ -76,6 +79,8 @@ async function startDeviceDataLogging(token) {
 
       const logData = `${elapsedTime}, ${internalTemp}, ${externalTemp}\n`;
       writeToFile(newFile, logData);
+      // Display the data in the div
+      deviceDataDiv.textContent = `Logging Data: ${logData}`;
     }
   }, 10000); // Log every 60 seconds
 }
