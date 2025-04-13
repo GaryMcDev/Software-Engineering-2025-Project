@@ -1,0 +1,9 @@
+#deviceData {
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    color: #333;
+    margin-top: 20px;
+}
+#deviceData h2 {
+    color: green;
+}
