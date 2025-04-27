@@ -1,3 +1,13 @@
+// Initialize empty arrays for data
+let timeData = [];
+let temperatureData = [];
+let externalTempData = [];
+let targetPoint = { time: null, temperature: null }; // Store target point data
+
+let selectedMeatValue = 0; // Store the selected meat value (0 for pork by default)
+let selectedWeight = 1.0; // Store the selected weight value
+let selectedTempUnit = 'C'; // Store the selected temperature unit
+
 /**
  * Main initialization function that runs when the page loads
  */
@@ -37,23 +47,27 @@ window.onload = function() {
 
         // Show feedback that logging is starting
         deviceDataDiv.textContent = "Logging started...";
-
+        const timestamp = new Date().toISOString(); // Update timestamp each interval
         // Start logging data every 10 seconds
         loggingInterval = setInterval(async () => {
-            const timestamp = new Date().toISOString(); // Update timestamp each interval
             const deviceData = await fetchDeviceData(token, deviceID);
 
             if (deviceData) {
                 const elapsedTime = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000);
                 const internalTemp = deviceData.temperature.internal || "N/A";
                 const externalTemp = deviceData.temperature.ambient || "N/A";
-
+                
                 const logData = `${elapsedTime}, ${internalTemp}, ${externalTemp}\n`;
                 fileContent += logData; // Append new data to file content
                 deviceDataDiv.textContent = `Logging Data: ${logData}`;
 
                 // Store the new log data in localStorage
                 storeDataToLocalStorage(logData);
+
+                // Add data to the chart
+                if (isGood(timeData, temperatureData, externalTempData, [elapsedTime, internalTemp, externalTemp])) {
+                    addData(elapsedTime, internalTemp, externalTemp);
+                }
             }
         }, 10000); // Log every 10 seconds
 
@@ -160,34 +174,16 @@ function showError(message) {
     errorElement.classList.add('show');
 }
 
-/**
- * Error Handling
- * Hides error message
- */
-function hideError() {
-    const errorElement = document.getElementById('errorMessage');
-    errorElement.classList.remove('show');
-}
 
 /**
  * Connection Retry
  * Attempts to reconnect to the device
  */
 function retryConnection() {
-    hideError();
     document.getElementById('deviceData').textContent = 'Loading device data...';
     window.location.reload();
 }
 
-// Initialize empty arrays for data
-let timeData = [];
-let temperatureData = [];
-let externalTempData = [];
-let targetPoint = { time: null, temperature: null }; // Store target point data
-let predictedTempData = []; // Array for predicted temperature data
-let selectedMeatValue = 0; // Store the selected meat value (0 for pork by default)
-let selectedWeight = 1.0; // Store the selected weight value
-let selectedTempUnit = 'C'; // Store the selected temperature unit
 
 // Function to add new data points
 function addData(time, temperature, externalTemp) {
@@ -201,13 +197,29 @@ function addData(time, temperature, externalTemp) {
         setTargetPoint(time + doneInfo.time, doneInfo.targetTemp);
     }
     
+    // Update the chart with new data
     updateChart();
-    hideError();
+    
+    // Log the data to console
+    console.log(`Time: ${time}, Internal Temp: ${temperature}, External Temp: ${externalTemp}`);
+}
+
+// Function to format time based on elapsed time
+function formatTime(seconds) {
+    if (seconds >= 7200) { // 2 hours = 7200 seconds
+        return `${(seconds / 3600).toFixed(1)}h`; // Convert to hours
+    } else if (seconds >= 120) { // 2 minutes = 120 seconds
+        return `${(seconds / 60).toFixed(1)}m`; // Convert to minutes
+    } else {
+        return `${seconds}s`; // Keep in seconds
+    }
 }
 
 // Function to update the chart
 function updateChart() {
-    lineChart.data.labels = timeData;
+    // Format time labels based on elapsed time
+    const formattedTimeLabels = timeData.map(time => formatTime(time));
+    lineChart.data.labels = formattedTimeLabels;
     
     // Convert temperatures based on selected unit
     const displayTempData = convertTemperatureData(temperatureData, selectedTempUnit === 'F');
@@ -220,13 +232,16 @@ function updateChart() {
     if (targetPoint.time !== null && targetPoint.temperature !== null) {
         const displayTargetTemp = selectedTempUnit === 'F' ? 
             celsiusToFahrenheit(targetPoint.temperature) : targetPoint.temperature;
-        lineChart.data.datasets[2].data = [{ x: targetPoint.time, y: displayTargetTemp }];
+        lineChart.data.datasets[2].data = [{ x: formatTime(targetPoint.time), y: displayTargetTemp }];
     } else {
         lineChart.data.datasets[2].data = [];
     }
     
     // Update y-axis label based on temperature unit
     lineChart.options.scales.y.title.text = `Temperature (${selectedTempUnit})`;
+    
+    // Update x-axis label based on time unit
+    const maxTime = Math.max(...timeData);
     
     lineChart.update();
 }
@@ -247,8 +262,14 @@ const MEAT_TARGET_TEMPS = {
     4: 145  // Lamb
 };
 
-/*
+
 function longTillDone() {
+    return{
+        time: 100,
+        targetTemp: 145
+    };
+
+    /*
     // Get the target temperature based on selected meat type
     const targetTemp = MEAT_TARGET_TEMPS[selectedMeatValue];
     
@@ -319,8 +340,8 @@ function longTillDone() {
         targetTemp: targetTemp,
         currentTemp: internalTempF[internalTempF.length - 1]
     };
+    */
 }
-*/
 
 // Meat selection button functionality
 const meatButtons = document.querySelectorAll('.meat-button');
@@ -403,7 +424,10 @@ const lineChart = new Chart(ctx, {
                 fill: true,
                 pointRadius: 8,
                 pointBackgroundColor: 'red',
-                pointStyle: 'star'
+                pointStyle: 'circle',
+                pointBorderWidth: 2,
+                pointBorderColor: 'red',
+                pointHoverRadius: 10
             }
         ]
     },
@@ -414,7 +438,7 @@ const lineChart = new Chart(ctx, {
             x: {
                 title: {
                     display: true,
-                    text: 'Time (seconds)'
+                    text: 'Time'
                 }
             },
             y: {
@@ -447,8 +471,8 @@ viewButtons.forEach(button => {
         // Update chart visibility based on selected view
         lineChart.data.datasets[0].hidden = view === 'external';
         lineChart.data.datasets[1].hidden = view === 'internal';
-        // Only show prediction when internal temperature is visible
-        lineChart.data.datasets[2].hidden = view === 'external' || view === 'all';
+        // Only show target point when "all" view is selected
+        lineChart.data.datasets[2].hidden = view !== 'all';
         lineChart.update();
     });
 });
@@ -494,4 +518,28 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+function isGood(time, internal_temp, external_temp, newData) {
+    // Check if arrays are empty
+    if (time.length === 0 || internal_temp.length === 0 || external_temp.length === 0) {
+        return true;
+    }
 
+    const [newTime, newInternal, newExternal] = newData;
+
+    // Check for "N/A" in any new data
+    if (newTime === "N/A" || newInternal === "N/A" || newExternal === "N/A") {
+        return false;
+    }
+
+    // Get the most recent data
+    const lastInternal = internal_temp[internal_temp.length - 1];
+    const lastExternal = external_temp[external_temp.length - 1];
+
+    // Check if new internal and external temps match the last recorded ones
+    if (newInternal === lastInternal && newExternal === lastExternal) {
+        return false;
+    }
+
+    // If all checks passed, the data is good
+    return true;
+}
