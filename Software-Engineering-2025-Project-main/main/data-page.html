@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Data</title>
+    <link rel="stylesheet" href="data-page.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Device Data</h1>
+    <div class="container">
+        <div class="button-container">
+            <div class="logging-control-container">
+                <button id="startButton" class="toggle-button">Start Logging</button>
+                <button id="stopButton" class="toggle-button active">Stop Logging</button>
+            </div>
+            <div class="data-view-container">
+                <button class="toggle-button active" data-view="all">All Data</button>
+                <button class="toggle-button" data-view="internal">Internal Only</button>
+                <button class="toggle-button" data-view="external">External Only</button>
+            </div>
+            <div class="temp-unit-container">
+                <button class="toggle-button temp-unit-button active" data-unit="C">°C</button>
+                <button class="toggle-button temp-unit-button" data-unit="F">°F</button>
+            </div>
+        </div>
+        <div class="chart-container">
+            <canvas id="lineChart"></canvas>
+        </div>
+        <div class="button-container">
+            <div class="weight-slider-container">
+                <label for="weightSlider">Weight (lbs):</label>
+                <input type="range" id="weightSlider" class="weight-slider" min="0.1" max="20" step="0.1" value="1">
+                <div class="weight-value" id="weightValue">1.0 lbs</div>
+            </div>
+            <button class="toggle-button meat-button" data-meat="pork" data-value="0">
+                Pork
+            </button>
+            <button class="toggle-button meat-button" data-meat="steak" data-value="1">
+                Steak
+            </button>
+            <button class="toggle-button meat-button" data-meat="chicken" data-value="2">
+                Chicken
+            </button>
+            <button class="toggle-button meat-button" data-meat="fish" data-value="3">
+                Fish
+            </button>
+            <button class="toggle-button meat-button" data-meat="lamb" data-value="4">
+                Lamb
+            </button>
+        </div>
+    </div>
+    <div id="deviceData">Loading device data...</div>
+    <div id="errorMessage" class="error-message">
+        No device detected. Please check your connection and try again.
+        <button class="retry-button" onclick="retryConnection()">Retry</button>
+    </div>
+    <script src="data-page.js"></script>
+</body>
+</html>
