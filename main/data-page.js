@@ -8,6 +8,8 @@ let selectedMeatValue = 0; // Store the selected meat value (0 for pork by defau
 let selectedWeight = 1.0; // Store the selected weight value
 let selectedTempUnit = 'C'; // Store the selected temperature unit
 
+// Add variable to track if target has been reached
+let hasReachedTarget = false;
 /**
  * Main initialization function that runs when the page loads
  */
@@ -197,6 +199,14 @@ function addData(time, temperature, externalTemp) {
         setTargetPoint(time + doneInfo.time, doneInfo.targetTemp);
     }
     
+    // Check if temperature has reached target and trigger confetti
+    const targetTemp = MEAT_TARGET_TEMPS[selectedMeatValue];
+    const currentTemp = selectedTempUnit === 'C' ? temperature : fahrenheitToCelsius(temperature);
+    if (currentTemp >= targetTemp && !hasReachedTarget) {
+        hasReachedTarget = true;
+        triggerConfetti();
+    }
+    
     // Update the chart with new data
     updateChart();
     
@@ -253,7 +263,7 @@ function setTargetPoint(time, temperature) {
     updateChart();
 }
 
-// Target temperatures for different meat types (in Fahrenheit)
+// Target temperatures for different meat types (in Celsius)
 const MEAT_TARGET_TEMPS = {
     0: 145, // Pork
     1: 135, // Steak
@@ -266,7 +276,7 @@ const MEAT_TARGET_TEMPS = {
 function longTillDone() {
     return{
         time: 100,
-        targetTemp: 145
+        targetTemp: 60
     };
 
     /*
@@ -528,4 +538,35 @@ function isGood(time, internal_temp, external_temp, newData) {
 
     // If all checks passed, the data is good
     return true;
+}
+
+// Function to trigger confetti animation
+function triggerConfetti() {
+    const duration = 3 * 1000; // 3 seconds
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+    function randomInRange(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+
+    const interval = setInterval(function() {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+            return clearInterval(interval);
+        }
+
+        const particleCount = 50 * (timeLeft / duration);
+        confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+        });
+        confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+        });
+    }, 250);
 }
