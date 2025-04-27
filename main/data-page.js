@@ -452,29 +452,15 @@ const lineChart = new Chart(ctx, {
         plugins: {
             legend: {
                 display: true,
-                position: 'top'
+                position: 'top',
+                labels: {
+                    usePointStyle: true,
+                    pointStyle: 'rect',
+                    padding: 20
+                }
             }
         }
     }
-});
-
-// Temperature view toggle button functionality
-const viewButtons = document.querySelectorAll('.toggle-button[data-view]');
-viewButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        // Remove active class from all view buttons
-        viewButtons.forEach(btn => btn.classList.remove('active'));
-        // Add active class to clicked button
-        button.classList.add('active');
-
-        const view = button.dataset.view;
-        // Update chart visibility based on selected view
-        lineChart.data.datasets[0].hidden = view === 'external';
-        lineChart.data.datasets[1].hidden = view === 'internal';
-        // Only show target point when "all" view is selected
-        lineChart.data.datasets[2].hidden = view !== 'all';
-        lineChart.update();
-    });
 });
 
 // Update weight slider to trigger heat transfer calculation
