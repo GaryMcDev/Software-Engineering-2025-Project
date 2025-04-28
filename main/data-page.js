@@ -191,13 +191,14 @@ function retryConnection() {
 function addData(time, temperature, externalTemp) {
     timeData.push(time);
     temperatureData.push(temperature);
-    externalTempData.push(externalTemp);
-    
+    externalTempData.push(204);//externalTemp);
+   console.log(timeData); 
     // Update target point based on longTillDone
-    const doneInfo = longTillDone();
-    if (doneInfo.time > 0) {
-        setTargetPoint(time + doneInfo.time, doneInfo.targetTemp);
-    }
+    try{const timeLeft = longTillDone(timeData, temperatureData, externalTempData, MEAT_TARGET_TEMPS.selectedMeatValue);
+    if (timeLeft > 0) {
+	    console.log("setting target");
+        setTargetPoint(time + timeLeft, MEAT_TARGET_TEMPS.selectedMEatValue);
+    }} catch (err) {}
     
     // Check if temperature has reached target and trigger confetti
     const targetTemp = MEAT_TARGET_TEMPS[selectedMeatValue];
@@ -265,93 +266,96 @@ function setTargetPoint(time, temperature) {
 
 // Target temperatures for different meat types (in Celsius)
 const MEAT_TARGET_TEMPS = {
-    0: 145, // Pork
-    1: 135, // Steak
-    2: 165, // Chicken
-    3: 145, // Fish
-    4: 145  // Lamb
+    0: 63, // Pork
+    1: 57, // Steak
+    2: 70, // Chicken
+    3: 63, // Fish
+    4: 60  // Lamb
 };
 
-
-function longTillDone() {
-    return{
-        time: 100,
-        targetTemp: 60
-    };
-
-    /*
-    // Get the target temperature based on selected meat type
-    const targetTemp = MEAT_TARGET_TEMPS[selectedMeatValue];
-    
-    // If we don't have enough data points, return a simple estimate
-    if (timeData.length < 2) {
-        const currentTemp = temperatureData.length > 0 ? 
-            (selectedTempUnit === 'C' ? celsiusToFahrenheit(temperatureData[temperatureData.length - 1]) : temperatureData[temperatureData.length - 1]) : 70;
-        const tempDiff = targetTemp - currentTemp;
-        return {
-            time: Math.max(0, tempDiff * 2),
-            targetTemp: targetTemp,
-            currentTemp: currentTemp
-        };
+function longTillDone(timeArray, internalTempArray, externalTempArray, targetTemp) {
+    if (timeArray.length !== internalTempArray.length || timeArray.length !== externalTempArray.length) {
+        throw new Error("All input arrays must have the same length.");
+    }
+    if (timeArray.length < 2) {
+        throw new Error("Not enough data points to make a prediction.");
     }
 
-    // Convert temperatures to Fahrenheit if needed
-    const internalTempF = selectedTempUnit === 'C' ? 
-        temperatureData.map(t => celsiusToFahrenheit(t)) : temperatureData;
-    const externalTempF = selectedTempUnit === 'C' ? 
-        externalTempData.map(t => celsiusToFahrenheit(t)) : externalTempData;
+    const currentTime = timeArray[timeArray.length - 1];
+    const currentTemp = internalTempArray[internalTempArray.length - 1];
+    const currentExternalTemp = externalTempArray[externalTempArray.length - 1];
 
-    // Define the exponential model with variable external temp
-    const model = (k) => (t) => {
-        const i = timeData.findIndex(val => val >= t);
-        const Text = externalTempF[i] ?? externalTempF[externalTempF.length - 1];
-        return Text + (internalTempF[0] - Text) * Math.exp(-k * (t - timeData[0]));
-    };
-
-    // Prepare data for fitting
-    const data = {
-        x: timeData,
-        y: internalTempF
-    };
-
-    // Initial guess for parameter
-    const initialValues = { k: 0.0001 };
-
-    // Fit using Levenberg-Marquardt
-    const options = {
-        damping: 1.5,
-        initialValues,
-        gradientDifference: 1e-6,
-        maxIterations: 100,
-        errorTolerance: 1e-3
-    };
-
-    const fit = LM(data, model, options);
-    const { k } = fit.parameterValues;
-
-    // Predict time when internalTemp reaches target
-    const lastTime = timeData[timeData.length - 1];
-    let t = lastTime;
-    let T = internalTempF[internalTempF.length - 1];
-
-    // Forward simulate until we reach the target
-    const dt = 0.1;
-    while (T < targetTemp && t - lastTime < 100000) { // safeguard
-        const i = timeData.findIndex(val => val >= t);
-        const Text = externalTempF[i] ?? externalTempF[externalTempF.length - 1];
-        T = Text + (internalTempF[0] - Text) * Math.exp(-k * (t - timeData[0]));
-        t += dt;
+    if (currentTemp >= targetTemp) {
+        return 0; // Already done
     }
 
-    const deltaTime = t - lastTime;
-    
-    return {
-        time: deltaTime > 0 ? deltaTime : 0,
-        targetTemp: targetTemp,
-        currentTemp: internalTempF[internalTempF.length - 1]
-    };
-    */
+    // We'll model temp as: T(t) = T_ext + (T0 - T_ext) * exp(-k * t)
+    // Estimate k using linear regression on ln((T - T_ext) / (T0 - T_ext))
+
+    const T0 = internalTempArray[0];
+    const T_ext0 = externalTempArray[0];
+
+    // Normalize times to start at zero
+    const t0 = timeArray[0];
+    const times = timeArray.map(t => t - t0);
+
+    const lnTemps = [];
+    const validTimes = [];
+
+    for (let i = 0; i < times.length; i++) {
+        const T_ext = externalTempArray[i];
+        const T = internalTempArray[i];
+        const numerator = T - T_ext;
+        const denominator = T0 - T_ext;
+
+        if (numerator < 0 && denominator < 0) {
+            const lnVal = Math.log(numerator / denominator);
+            lnTemps.push(lnVal);
+            validTimes.push(times[i]);
+        }
+    }
+
+    if (lnTemps.length < 2) {
+        throw new Error("Not enough valid data points to fit model.");
+    }
+
+    // Simple linear regression: lnTemps = -k * times
+    let sumX = 0, sumY = 0, sumXX = 0, sumXY = 0;
+    for (let i = 0; i < validTimes.length; i++) {
+        const x = validTimes[i];
+        const y = lnTemps[i];
+        sumX += x;
+        sumY += y;
+        sumXX += x * x;
+        sumXY += x * y;
+    }
+
+    const n = validTimes.length;
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+
+    const k = -slope; // because lnTemps = -k * t
+
+    if (k <= 0) {
+        throw new Error("Invalid model: k must be positive.");
+    }
+
+    // Solve for the future time t_done when T(t_done) = targetTemp
+    const T_ext_now = currentExternalTemp; // assume external temp stays constant
+    const numerator = targetTemp - T_ext_now;
+    const denominator = T0 - T_ext_now;
+
+    if (numerator <= 0 || denominator <= 0) {
+        throw new Error("Target temperature out of valid range.");
+    }
+
+    const tDone = -Math.log(numerator / denominator) / k;
+
+    const elapsedTime = times[times.length - 1];
+    const timeRemaining = tDone - elapsedTime;
+console.log(timeRemaining);
+    return timeRemaining > 0 ? timeRemaining : 0;
 }
+
 
 // Meat selection button functionality
 const meatButtons = document.querySelectorAll('.meat-button');
@@ -368,9 +372,9 @@ meatButtons.forEach(button => {
         
         // Update target point based on new meat selection
         if (timeData.length > 0) {
-            const doneInfo = longTillDone();
-            if (doneInfo.time > 0) {
-                setTargetPoint(timeData[timeData.length - 1] + doneInfo.time, doneInfo.targetTemp);
+            const timeLeft = longTillDone(timeData, temperatureData, externalTempData, MEAT_TARGET_TEMPS.selectedMeatValue);
+            if (timeLeft > 0) {
+                setTargetPoint(timeData[timeData.length - 1] + timeLeft, MEAT_TARGET_TEMPS.selectedMeatValue);
             }
         }
         updateChart();
