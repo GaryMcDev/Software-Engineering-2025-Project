@@ -23,14 +23,14 @@ window.onload = function() {
     let fileContent = `${new Date().toISOString()}\nElapsed Time, Internal, External\n`;
 
     startButton.addEventListener("click", async function() {
-        // Ask user if they want to recover old data
+    /*    // Ask user if they want to recover old data
         const previousData = localStorage.getItem('deviceDataLog');
         if (previousData && confirm("Recover previous data?")) {
             deviceDataDiv.textContent = `Previous Data: ${previousData}`;
         } else {
             deviceDataDiv.textContent = "No previous data found.";
         }
-
+   */
 
         // Retrieve the token from sessionStorage
         const token = sessionStorage.getItem('authToken');
@@ -39,7 +39,7 @@ window.onload = function() {
             window.location.href = "index.html";
             return;
         }
-
+	
         // Start logging new device data
         const deviceID = await getDeviceID(token);
         if (!deviceID) {
@@ -217,8 +217,10 @@ function addData(time, temperature, externalTemp) {
 // Function to format time based on elapsed time
 function formatTime(seconds) {
     if (seconds >= 7200) { // 2 hours = 7200 seconds
+	    //lineChart.options.scales.x.title.text = 'Elapsed Time (hours)';
         return `${(seconds / 3600).toFixed(1)}h`; // Convert to hours
     } else if (seconds >= 120) { // 2 minutes = 120 seconds
+	    //lineChart.options.scales.x.title.text = 'Elapsed Time (minutes)';
         return `${(seconds / 60).toFixed(1)}m`; // Convert to minutes
     } else {
         return `${seconds}s`; // Keep in seconds
@@ -229,20 +231,32 @@ function formatTime(seconds) {
 function updateChart() {
     // Format time labels based on elapsed time
     const formattedTimeLabels = timeData.map(time => formatTime(time));
-    lineChart.data.labels = formattedTimeLabels;
+    //lineChart.data.labels = formattedTimeLabels;
 
     // Convert temperatures based on selected unit
     const displayTempData = convertTemperatureData(temperatureData, selectedTempUnit === 'F');
     const displayExternalTempData = convertTemperatureData(externalTempData, selectedTempUnit === 'F');
     
-    lineChart.data.datasets[0].data = displayTempData;
-    lineChart.data.datasets[1].data = displayExternalTempData;
+    //lineChart.data.datasets[0].data = displayTempData;
+    //lineChart.data.datasets[1].data = displayExternalTempData;
     
+	const combinedDataInternal = timeData.map((t, i) => ({
+		x: t,
+		y: temperatureData[i]
+	}));
+	const combinedDataExternal = timeData.map((t, i) => ({
+		x: t,
+		y: externalTempData[i]
+	}));
+
+	lineChart.data.datasets[0].data = combinedDataInternal;
+	lineChart.data.datasets[1].data = combinedDataExternal;
+	console.log(combinedDataInternal);
     // Update target point if it exists
     if (targetPoint.time !== null && targetPoint.temperature !== null) {
         const displayTargetTemp = selectedTempUnit === 'F' ? 
             celsiusToFahrenheit(targetPoint.temperature) : targetPoint.temperature;
-        lineChart.data.datasets[2].data = [{ x: formatTime(targetPoint.time), y: displayTargetTemp }];
+        lineChart.data.datasets[2].data = [{ x: targetPoint.time, y: displayTargetTemp }];
     } else {
         lineChart.data.datasets[2].data = [];
     }
@@ -251,8 +265,12 @@ function updateChart() {
     lineChart.options.scales.y.title.text = `Temperature (${selectedTempUnit})`;
     
     // Update x-axis label based on time unit
-    const maxTime = Math.max(...timeData);
-    
+	/*const maxTime = Math.max(...timeData);
+    try {maxTime = Math.max(...timeData, targetPoint.time);}
+	catch (err) {}
+	maxTime = maxTime + 60
+   console.log(maxTime);
+	lineChart.options.scales.x.max = maxTime;*/
     lineChart.update();
 }
 
@@ -409,7 +427,7 @@ const ctx = document.getElementById('lineChart').getContext('2d');
 const lineChart = new Chart(ctx, {
     type: 'line',
     data: {
-        labels: timeData,
+        //labels: timeData,
         datasets: [
             {
                 label: 'Internal Temperature',
@@ -449,11 +467,13 @@ const lineChart = new Chart(ctx, {
         maintainAspectRatio: false,
         scales: {
             x: {
-		//type: 'linear',
+		type: 'linear',
                 title: {
                     display: true,
-                    text: 'Time'
-                }
+		    text: 'Elapsed Time (seconds)'
+                }//,
+		//min: 60,
+		//max: 120
             },
             y: {
                 title: {
