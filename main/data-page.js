@@ -242,11 +242,11 @@ function updateChart() {
     
 	const combinedDataInternal = timeData.map((t, i) => ({
 		x: t,
-		y: temperatureData[i]
+		y: displayTempData[i]
 	}));
 	const combinedDataExternal = timeData.map((t, i) => ({
 		x: t,
-		y: externalTempData[i]
+		y: displayExternalTempData[i]
 	}));
 
 	lineChart.data.datasets[0].data = combinedDataInternal;
