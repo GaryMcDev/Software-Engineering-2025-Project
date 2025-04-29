@@ -71,7 +71,7 @@ window.onload = function() {
                     addData(elapsedTime, internalTemp, externalTemp);
                 }
             }
-        }, 10000); // Log every 10 seconds
+        }, 60000); // Log every 60 seconds
 
         // Show the stop button after starting
         startButton.style.display = "none";
@@ -192,13 +192,12 @@ function addData(time, temperature, externalTemp) {
     timeData.push(time);
     temperatureData.push(temperature);
     externalTempData.push(204);//externalTemp);
-   console.log(timeData); 
+   console.log(MEAT_TARGET_TEMPS[selectedMeatValue]); 
     // Update target point based on longTillDone
-    try{const timeLeft = longTillDone(timeData, temperatureData, externalTempData, MEAT_TARGET_TEMPS.selectedMeatValue);
+    try{const timeLeft = longTillDone(timeData, temperatureData, externalTempData, MEAT_TARGET_TEMPS[selectedMeatValue]);
     if (timeLeft > 0) {
-	    console.log("setting target");
-        setTargetPoint(time + timeLeft, MEAT_TARGET_TEMPS.selectedMEatValue);
-    }} catch (err) {}
+        setTargetPoint(time + timeLeft, MEAT_TARGET_TEMPS[selectedMeatValue]);
+    }} catch (err) {console.log(err)}
     
     // Check if temperature has reached target and trigger confetti
     const targetTemp = MEAT_TARGET_TEMPS[selectedMeatValue];
@@ -231,7 +230,7 @@ function updateChart() {
     // Format time labels based on elapsed time
     const formattedTimeLabels = timeData.map(time => formatTime(time));
     lineChart.data.labels = formattedTimeLabels;
-    
+
     // Convert temperatures based on selected unit
     const displayTempData = convertTemperatureData(temperatureData, selectedTempUnit === 'F');
     const displayExternalTempData = convertTemperatureData(externalTempData, selectedTempUnit === 'F');
@@ -344,7 +343,7 @@ function longTillDone(timeArray, internalTempArray, externalTempArray, targetTem
     const numerator = targetTemp - T_ext_now;
     const denominator = T0 - T_ext_now;
 
-    if (numerator <= 0 || denominator <= 0) {
+    if ((numerator < 0 && denominator >= 0) || (numerator > 0 && denominator <= 0)) {
         throw new Error("Target temperature out of valid range.");
     }
 
@@ -372,9 +371,9 @@ meatButtons.forEach(button => {
         
         // Update target point based on new meat selection
         if (timeData.length > 0) {
-            const timeLeft = longTillDone(timeData, temperatureData, externalTempData, MEAT_TARGET_TEMPS.selectedMeatValue);
+            const timeLeft = longTillDone(timeData, temperatureData, externalTempData, MEAT_TARGET_TEMPS[selectedMeatValue]);
             if (timeLeft > 0) {
-                setTargetPoint(timeData[timeData.length - 1] + timeLeft, MEAT_TARGET_TEMPS.selectedMeatValue);
+                setTargetPoint(timeData[timeData.length - 1] + timeLeft, MEAT_TARGET_TEMPS[selectedMeatValue]);
             }
         }
         updateChart();
@@ -450,6 +449,7 @@ const lineChart = new Chart(ctx, {
         maintainAspectRatio: false,
         scales: {
             x: {
+		//type: 'linear',
                 title: {
                     display: true,
                     text: 'Time'
